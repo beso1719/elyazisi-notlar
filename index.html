@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="tr" data-theme="auto">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>El Yazısı Notlar</title>
+  <link rel="icon" href="data:," />
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- Giriş ekranı -->
+  <div id="auth-screen" class="auth-screen hidden">
+    <div class="auth-card">
+      <h1>El Yazısı Notlar</h1>
+      <p class="auth-sub">E-posta ile giriş yap veya kayıt ol.</p>
+      <form id="auth-form">
+        <input id="email" type="email" placeholder="E-posta" autocomplete="email" required />
+        <input id="password" type="password" placeholder="Şifre (en az 6 karakter)" autocomplete="current-password" minlength="6" />
+        <div class="auth-actions">
+          <button type="submit" data-action="signin" class="btn btn-primary">Giriş yap</button>
+          <button type="button" data-action="signup" class="btn">Kayıt ol</button>
+        </div>
+        <button type="button" data-action="magic" class="btn btn-link">Şifresiz e-posta linki ile gir</button>
+      </form>
+      <p id="auth-msg" class="auth-msg" role="status"></p>
+    </div>
+  </div>
+
+  <!-- Uygulama -->
+  <div id="app" class="app hidden">
+    <header class="topbar">
+      <button id="menu-toggle" class="icon-btn" aria-label="Menü">☰</button>
+      <span class="brand">Notlar</span>
+      <span id="save-status" class="save-status"></span>
+      <div class="spacer"></div>
+      <button id="theme-toggle" class="icon-btn" aria-label="Tema">◐</button>
+      <button id="logout-btn" class="btn btn-sm">Çıkış</button>
+    </header>
+
+    <div class="layout">
+      <aside id="sidebar" class="sidebar">
+        <div class="sidebar-head">
+          <button id="new-note" class="btn btn-primary btn-block">+ Yeni not</button>
+          <input id="search" type="search" placeholder="Ara…" class="search-input" />
+        </div>
+        <ul id="note-list" class="note-list"></ul>
+      </aside>
+
+      <main id="editor" class="editor">
+        <div id="empty-state" class="empty-state">
+          <p>Bir not seç ya da yeni not oluştur.</p>
+        </div>
+
+        <div id="note-view" class="note-view hidden">
+          <div class="note-head">
+            <input id="note-title" class="note-title" placeholder="Başlık" />
+            <textarea id="note-content" class="note-content" placeholder="Kısa metin / açıklama…" rows="1"></textarea>
+          </div>
+
+          <!-- Sayfalar (kaydırılabilir) -->
+          <div id="pages" class="pages-scroll"></div>
+
+          <!-- Yüzen Apple-Pencil tarzı araç paleti -->
+          <div id="palette" class="palette">
+            <div class="palette-grip" id="palette-grip">⋮⋮</div>
+            <div class="palette-tools">
+              <button class="tool" data-tool="pen" id="tool-pen" title="Kalem">✒️</button>
+              <button class="tool" data-tool="hi" id="tool-hi" title="Fosforlu">🖍️</button>
+              <button class="tool" data-tool="eraser" id="tool-eraser" title="Silgi">⌫</button>
+              <span class="palette-sep"></span>
+              <button class="tool" id="undo-btn" title="Geri al">↶</button>
+              <button class="tool" id="redo-btn" title="İleri al">↷</button>
+              <button class="tool" id="clear-btn" title="Tümünü temizle">🗑️</button>
+            </div>
+            <div class="palette-row" id="colors"></div>
+            <div class="palette-row sizes" id="sizes"></div>
+            <label class="palette-finger">
+              <input id="finger-draw" type="checkbox" /> Parmakla çiz
+            </label>
+          </div>
+
+          <!-- Sayfa ekleme / silme çubuğu -->
+          <div class="note-footer">
+            <div class="addpage" id="addpage-group">
+              <button class="btn btn-sm" data-add="blank">+ Boş sayfa</button>
+              <button class="btn btn-sm" data-add="lined">+ Çizgili</button>
+              <button class="btn btn-sm" data-add="grid">+ Kareli</button>
+              <button class="btn btn-sm" data-add="dotted">+ Noktalı</button>
+            </div>
+            <div class="spacer"></div>
+            <button id="delete-note" class="btn btn-sm btn-danger">Notu sil</button>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Yeni not modalı -->
+  <div id="newnote-modal" class="modal hidden">
+    <div class="modal-card">
+      <h2>Yeni not</h2>
+      <p class="modal-sub">Sayfa türü seç</p>
+      <div class="pagetype-grid">
+        <button class="pagetype" data-style="blank"><span class="pt-prev pt-blank"></span>Boş</button>
+        <button class="pagetype" data-style="lined"><span class="pt-prev pt-lined"></span>Çizgili</button>
+        <button class="pagetype" data-style="grid"><span class="pt-prev pt-grid"></span>Kareli</button>
+        <button class="pagetype" data-style="dotted"><span class="pt-prev pt-dotted"></span>Noktalı</button>
+        <button class="pagetype" data-style="pdf"><span class="pt-prev pt-pdf">PDF</span>PDF içe aktar</button>
+      </div>
+      <input id="pdf-input" type="file" accept="application/pdf" class="hidden" />
+      <button class="btn btn-link" id="newnote-cancel">Vazgeç</button>
+    </div>
+  </div>
+
+  <div id="config-warning" class="config-warning hidden">
+    <div class="auth-card">
+      <h2>Supabase ayarı gerekli</h2>
+      <p><code>js/supabaseClient.js</code> içindeki URL ve anahtarı doldur. README'ye bak.</p>
+    </div>
+  </div>
+
+  <div id="busy" class="busy hidden"><div class="spinner"></div><span id="busy-text">Yükleniyor…</span></div>
+
+  <script type="module" src="js/app.js?v=6"></script>
+</body>
+</html>
