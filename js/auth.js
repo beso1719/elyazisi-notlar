@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js?v=6';
+import { supabase } from './supabaseClient.js?v=7';
 
 export async function getUser() {
   const { data } = await supabase.auth.getUser();
@@ -26,6 +26,13 @@ export function signInWithMagicLink(email) {
   return supabase.auth.signInWithOtp({
     email,
     options: { emailRedirectTo: window.location.href.split('#')[0] },
+  });
+}
+
+export function signInWithGoogle() {
+  return supabase.auth.signInWithOAuth({
+    provider: 'google',
+    options: { redirectTo: window.location.href.split('#')[0] },
   });
 }
 

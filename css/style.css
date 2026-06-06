@@ -62,6 +62,10 @@ button, input, textarea { font-family: inherit; font-size: 1rem; color: var(--in
 .auth-actions .btn { flex: 1; }
 .auth-msg { margin: 14px 0 0; min-height: 1.2em; color: var(--muted); font-size: .9rem; }
 .auth-msg.error { color: var(--danger); }
+.btn-google { display: flex; align-items: center; justify-content: center; gap: 10px; background: #fff; color: #1f1f1f; border: 1px solid var(--border); min-height: 44px; font-weight: 500; }
+.btn-google:hover { background: #f7f7f7; }
+.auth-or { display: flex; align-items: center; gap: 10px; margin: 16px 0; color: var(--muted); font-size: .85rem; }
+.auth-or::before, .auth-or::after { content: ''; flex: 1; height: 1px; background: var(--border); }
 
 /* Yeni not modalı */
 .modal-card h2 { margin: 0 0 2px; }

@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=6';
-import * as auth from './auth.js?v=6';
-import * as notesApi from './notes.js?v=6';
-import { NoteEditor } from './drawing.js?v=6';
+import { isConfigured } from './supabaseClient.js?v=7';
+import * as auth from './auth.js?v=7';
+import * as notesApi from './notes.js?v=7';
+import { NoteEditor } from './drawing.js?v=7';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=6')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=7')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -15,7 +15,7 @@ if (!isConfigured) {
 
 const els = {
   authScreen: $('auth-screen'), app: $('app'), authForm: $('auth-form'),
-  email: $('email'), password: $('password'), authMsg: $('auth-msg'),
+  email: $('email'), password: $('password'), authMsg: $('auth-msg'), googleBtn: $('google-btn'),
   noteList: $('note-list'), newNote: $('new-note'), search: $('search'),
   emptyState: $('empty-state'), noteView: $('note-view'),
   title: $('note-title'), content: $('note-content'), saveStatus: $('save-status'),
@@ -48,6 +48,11 @@ els.themeToggle.addEventListener('click', () => {
 els.authForm.addEventListener('submit', (e) => { e.preventDefault(); doAuth('signin'); });
 els.authForm.querySelector('[data-action="signup"]').addEventListener('click', () => doAuth('signup'));
 els.authForm.querySelector('[data-action="magic"]').addEventListener('click', () => doAuth('magic'));
+els.googleBtn.addEventListener('click', async () => {
+  setAuthMsg('', false);
+  try { const { error } = await auth.signInWithGoogle(); if (error) throw error; }
+  catch (err) { setAuthMsg(err.message || 'Google girişi başarısız.', true); }
+});
 
 async function doAuth(action) {
   const email = els.email.value.trim();
