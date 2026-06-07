@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=10';
-import * as auth from './auth.js?v=10';
-import * as notesApi from './notes.js?v=10';
-import { NoteEditor } from './drawing.js?v=10';
+import { isConfigured } from './supabaseClient.js?v=11';
+import * as auth from './auth.js?v=11';
+import * as notesApi from './notes.js?v=11';
+import { NoteEditor } from './drawing.js?v=11';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=10')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=11')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -281,28 +281,36 @@ function setPaletteOpen(open) {
     els.paletteToggle.textContent = act ? act.textContent : '✒️';
   }
 }
-els.paletteToggle.addEventListener('click', () => setPaletteOpen(els.palette.classList.contains('collapsed')));
+// Sürükleme bir tıklamaya dönüşmesin diye (küçük paleti taşırken açılmasını engelle)
+let palMoved = false;
+els.paletteToggle.addEventListener('click', () => {
+  if (palMoved) { palMoved = false; return; }
+  setPaletteOpen(els.palette.classList.contains('collapsed'));
+});
 
-// Paleti sürükle
+// Paleti sürükle — hem açık (grip) hem kapalı (yuvarlak düğme) durumda
 function makeDraggable() {
-  let drag = null;
-  const start = (e) => {
-    const r = els.palette.getBoundingClientRect();
-    drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
-    els.palette.style.transform = 'none';
-    els.grip.setPointerCapture(e.pointerId);
+  const attach = (handle) => {
+    let drag = null;
+    handle.addEventListener('pointerdown', (e) => {
+      const r = els.palette.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, sx: e.clientX, sy: e.clientY };
+      palMoved = false;
+      els.palette.style.transform = 'none';
+      try { handle.setPointerCapture(e.pointerId); } catch {}
+    });
+    handle.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) palMoved = true;
+      const er = els.editor?.getBoundingClientRect?.() || { left: 0, top: 0 };
+      els.palette.style.left = (e.clientX - drag.dx - er.left) + 'px';
+      els.palette.style.top = (e.clientY - drag.dy - er.top) + 'px';
+      els.palette.style.bottom = 'auto';
+    });
+    handle.addEventListener('pointerup', () => { drag = null; });
   };
-  const move = (e) => {
-    if (!drag) return;
-    const er = els.editor?.getBoundingClientRect?.() || { left: 0, top: 0 };
-    els.palette.style.left = (e.clientX - drag.dx - er.left) + 'px';
-    els.palette.style.top = (e.clientY - drag.dy - er.top) + 'px';
-    els.palette.style.bottom = 'auto';
-  };
-  const end = () => { drag = null; };
-  els.grip.addEventListener('pointerdown', start);
-  els.grip.addEventListener('pointermove', move);
-  els.grip.addEventListener('pointerup', end);
+  attach(els.grip);
+  attach(els.paletteToggle);
 }
 els.editor = $('editor');
 

@@ -1,4 +1,4 @@
-import { supabase } from './supabaseClient.js?v=7';
+import { supabase } from './supabaseClient.js?v=11';
 
 const TABLE = 'notes';
 const BUCKET = 'pdfs';
