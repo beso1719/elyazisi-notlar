@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=12';
-import * as auth from './auth.js?v=12';
-import * as notesApi from './notes.js?v=12';
-import { NoteEditor } from './drawing.js?v=12';
+import { isConfigured } from './supabaseClient.js?v=14';
+import * as auth from './auth.js?v=14';
+import * as notesApi from './notes.js?v=14';
+import { NoteEditor } from './drawing.js?v=14';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=12')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=14')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -23,7 +23,8 @@ const els = {
   menuToggle: $('menu-toggle'), sidebar: $('sidebar'), fullscreenBtn: $('fullscreen-btn'),
   pagesScroll: $('pages-scroll'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'), zoomLevel: $('zoom-level'),
   pages: $('pages'), tools: $('tools'), toolModes: $('tool-modes'), pens: $('pens'), penAdd: $('pen-add'),
-  penEditor: $('pen-editor'), penColor: $('pen-color'), penSize: $('pen-size'), penSizeVal: $('pen-size-val'), penDelete: $('pen-delete'),
+  penEditor: $('pen-editor'), penColor: $('pen-color'), penSize: $('pen-size'), penSizeVal: $('pen-size-val'),
+  penSmooth: $('pen-smooth'), penDelete: $('pen-delete'),
   undoBtn: $('undo-btn'), redoBtn: $('redo-btn'), clearBtn: $('clear-btn'),
   fingerToggle: $('finger-toggle'), addpageGroup: $('addpage-group'),
   modal: $('newnote-modal'), modalCancel: $('newnote-cancel'), pdfInput: $('pdf-input'),
@@ -39,7 +40,7 @@ function busy(on, text = 'Yükleniyor…') { els.busyText.textContent = text; el
 // ---------- Tema ----------
 const THEME_KEY = 'eyn-theme';
 function applyTheme(t) { document.documentElement.setAttribute('data-theme', t); localStorage.setItem(THEME_KEY, t); }
-applyTheme(localStorage.getItem(THEME_KEY) || 'auto');
+applyTheme(localStorage.getItem(THEME_KEY) || 'dark');
 els.themeToggle.addEventListener('click', () => {
   const cur = document.documentElement.getAttribute('data-theme');
   applyTheme(cur === 'dark' ? 'light' : cur === 'light' ? 'auto' : 'dark');
@@ -217,30 +218,49 @@ function ensureEditor() {
   selectTool('pen');
 }
 
-// ---------- Kalemler (çoklu hazır kalem, localStorage'da saklanır) ----------
+// ---------- Kalemler & fosforlu kalemler (iki ayrı hazır set, localStorage) ----------
 const PEN_KEY = 'eyn-pens';
+const HI_KEY = 'eyn-hipens';
 const DEFAULT_PENS = [
-  { color: '#1d1d1f', size: 3 }, { color: '#e0463a', size: 3 },
-  { color: '#3b6df5', size: 3 }, { color: '#2f9e44', size: 4 },
+  { color: '#181818', size: 3 }, { color: '#da291c', size: 3 },
+  { color: '#1f6feb', size: 3 }, { color: '#2f9e44', size: 4 },
   { color: '#f08c00', size: 6 }, { color: '#ae3ec9', size: 3 },
   { color: '#000000', size: 10 },
 ];
-const HI = { color: '#ffe066', size: 12 }; // fosforlu
-let pens = loadPens();
-let curPen = 0;
+// Fosforlu neon renk paleti
+const DEFAULT_HI = [
+  { color: '#fff200', size: 16 }, { color: '#b2ff00', size: 16 },
+  { color: '#00e5ff', size: 16 }, { color: '#ff6fff', size: 16 },
+  { color: '#ff8a00', size: 16 },
+];
+let pens = loadSet(PEN_KEY, DEFAULT_PENS);
+let hipens = loadSet(HI_KEY, DEFAULT_HI);
+// Pürüzsüz yazan hazır bir kalem yoksa ekle (mevcut kullanıcılar da görsün).
+if (!pens.some((p) => p.smooth)) { pens.push({ color: '#1f6feb', size: 5, smooth: true }); saveSet(PEN_KEY, pens); }
+let curPen = 0, curHi = 0;
 let curTool = 'pen';
 
-function loadPens() {
-  try { const v = JSON.parse(localStorage.getItem(PEN_KEY)); if (Array.isArray(v) && v.length) return v; } catch {}
-  return DEFAULT_PENS.map((p) => ({ ...p }));
+function loadSet(key, def) {
+  try { const v = JSON.parse(localStorage.getItem(key)); if (Array.isArray(v) && v.length) return v; } catch {}
+  return def.map((p) => ({ ...p }));
 }
-function savePens() { localStorage.setItem(PEN_KEY, JSON.stringify(pens)); }
+function saveSet(key, arr) { localStorage.setItem(key, JSON.stringify(arr)); }
+// Seçili araca göre aktif kalem setini döndür.
+function activeSet() {
+  return curTool === 'hi'
+    ? { arr: hipens, idx: curHi, key: HI_KEY, set: (i) => (curHi = i) }
+    : { arr: pens, idx: curPen, key: PEN_KEY, set: (i) => (curPen = i) };
+}
 
 function buildPens() {
   els.pens.innerHTML = '';
-  pens.forEach((p, i) => {
+  const hi = curTool === 'hi';
+  const arr = hi ? hipens : pens;
+  const cur = hi ? curHi : curPen;
+  const showSel = curTool === 'pen' || curTool === 'hi';
+  arr.forEach((p, i) => {
     const b = document.createElement('button');
-    b.className = 'pen' + (curTool === 'pen' && i === curPen ? ' active' : '');
+    b.className = 'pen' + (hi ? ' pen--hi' : '') + (!hi && p.smooth ? ' pen--smooth' : '') + (showSel && i === cur ? ' active' : '');
     b.style.setProperty('--c', p.color);
     b.innerHTML = '<i class="body"></i><i class="tip"></i>';
     b.addEventListener('click', () => selectPen(i, b));
@@ -250,29 +270,37 @@ function buildPens() {
 function markTool() {
   els.toolModes.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === curTool));
 }
-function applyPen() {
-  const p = pens[curPen]; if (!p) return;
-  editor.setTool('pen'); editor.setColor(p.color); editor.setSize(p.size);
+function applyActive() {
+  const { arr, idx } = activeSet();
+  const p = arr[idx]; if (!p) return;
+  editor.setTool(curTool === 'hi' ? 'hi' : 'pen');
+  editor.setColor(p.color); editor.setSize(p.size);
+  editor.setSmooth(curTool === 'pen' && !!p.smooth);
 }
 function selectTool(t) {
   curTool = t;
-  if (t === 'pen') applyPen();
-  else if (t === 'hi') { editor.setTool('hi'); editor.setColor(HI.color); editor.setSize(HI.size); }
-  else if (t === 'eraser') editor.setTool('eraser');
+  if (t === 'eraser') editor.setTool('eraser');
+  else applyActive();
   markTool(); buildPens(); closePenEditor();
 }
 function selectPen(i, btn) {
-  if (curTool === 'pen' && curPen === i) { openPenEditor(i, btn); return; } // aktif kaleme tekrar bas → düzenle
-  curPen = i; curTool = 'pen';
-  applyPen(); markTool(); buildPens(); closePenEditor();
+  // Eraser modunda kaleme basınca o sete geç.
+  if (curTool === 'eraser') curTool = 'pen';
+  const a = activeSet();
+  if (a.idx === i) { openPenEditor(i, btn); return; } // aktif kaleme tekrar bas → düzenle
+  a.set(i);
+  applyActive(); markTool(); buildPens(); closePenEditor();
 }
 
 // Kalem düzenleme açılır kutusu
 function openPenEditor(i, btn) {
-  curPen = i;
-  const p = pens[i];
+  const a = activeSet(); a.set(i);
+  const p = a.arr[i];
   els.penColor.value = p.color;
   els.penSize.value = p.size; els.penSizeVal.textContent = p.size;
+  // Pürüzsüz toggle yalnızca normal kalemlerde anlamlı.
+  els.penSmooth.style.display = curTool === 'pen' ? '' : 'none';
+  els.penSmooth.classList.toggle('active', !!p.smooth);
   els.penEditor.classList.remove('hidden');
   const nv = els.noteView.getBoundingClientRect();
   const tr = els.tools.getBoundingClientRect();
@@ -281,21 +309,32 @@ function openPenEditor(i, btn) {
   els.penEditor.style.top = Math.max(8, r.top - nv.top) + 'px';
 }
 function closePenEditor() { els.penEditor.classList.add('hidden'); }
-els.penColor.addEventListener('input', () => { pens[curPen].color = els.penColor.value; savePens(); buildPens(); applyPen(); });
+els.penColor.addEventListener('input', () => {
+  const a = activeSet(); a.arr[a.idx].color = els.penColor.value;
+  saveSet(a.key, a.arr); buildPens(); applyActive();
+});
 els.penSize.addEventListener('input', () => {
-  pens[curPen].size = +els.penSize.value; els.penSizeVal.textContent = els.penSize.value;
-  savePens(); buildPens(); applyPen();
+  const a = activeSet(); a.arr[a.idx].size = +els.penSize.value;
+  els.penSizeVal.textContent = els.penSize.value; saveSet(a.key, a.arr); buildPens(); applyActive();
+});
+els.penSmooth.addEventListener('click', () => {
+  const a = activeSet();
+  const p = a.arr[a.idx]; p.smooth = !p.smooth;
+  els.penSmooth.classList.toggle('active', p.smooth);
+  saveSet(a.key, a.arr); buildPens(); applyActive();
 });
 els.penDelete.addEventListener('click', () => {
-  if (pens.length <= 1) return;
-  pens.splice(curPen, 1); curPen = Math.max(0, curPen - 1);
-  savePens(); applyPen(); buildPens(); closePenEditor();
+  const a = activeSet();
+  if (a.arr.length <= 1) return;
+  a.arr.splice(a.idx, 1); a.set(Math.max(0, a.idx - 1));
+  saveSet(a.key, a.arr); applyActive(); buildPens(); closePenEditor();
 });
 els.penAdd.addEventListener('click', () => {
-  pens.push({ color: '#3b6df5', size: 4 });
-  curPen = pens.length - 1; curTool = 'pen';
-  savePens(); applyPen(); markTool(); buildPens();
-  openPenEditor(curPen, els.pens.lastElementChild);
+  const a = activeSet();
+  a.arr.push(curTool === 'hi' ? { color: '#fff200', size: 16 } : { color: '#1f6feb', size: 4 });
+  a.set(a.arr.length - 1);
+  saveSet(a.key, a.arr); applyActive(); markTool(); buildPens();
+  openPenEditor(a.arr.length - 1, els.pens.lastElementChild);
 });
 // Boş alana basınca düzenleyiciyi kapat
 document.addEventListener('pointerdown', (e) => {
@@ -370,12 +409,32 @@ function setFs(on) {
   setTimeout(() => editor && editor._relayout(), 80);
 }
 els.fullscreenBtn.addEventListener('click', () => setFs(!isFsActive()));
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFsActive()) setFs(false); });
+
+// ---------- Klavye kısayolları ----------
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && isFsActive()) { setFs(false); return; }
+  if (!editor || els.noteView.classList.contains('hidden')) return;
+  const typing = ['INPUT', 'TEXTAREA'].includes(e.target.tagName);
+  const mod = e.ctrlKey || e.metaKey;
+  if (mod && e.key.toLowerCase() === 'z') {
+    e.preventDefault(); e.shiftKey ? editor.redo() : editor.undo();
+  } else if (mod && e.key.toLowerCase() === 'y') {
+    e.preventDefault(); editor.redo();
+  } else if (mod && e.key.toLowerCase() === 's') {
+    e.preventDefault(); flushSave();
+  } else if (!mod && !typing) {
+    const k = e.key.toLowerCase();
+    if (k === 'p') selectTool('pen');
+    else if (k === 'h') selectTool('hi');
+    else if (k === 'e') selectTool('eraser');
+    else if (k === 'f') els.fingerToggle.click();
+  }
+});
 
 // ---------- Yakınlaştırma (PDF + tüm sayfalar) ----------
 // CSS `zoom` kullanıyoruz: transform'un aksine yerleşimi etkiler, böylece
 // büyütünce kaydırma alanı genişler ve içerikte gezinilebilir.
-const ZMIN = 0.5, ZMAX = 3, ZSTEP = 0.25;
+const ZMIN = 0.5, ZMAX = 6, ZSTEP = 0.25;
 let zoom = 1, zoomRelayout = null;
 function applyZoom(z, doRelayout = true) {
   zoom = Math.min(ZMAX, Math.max(ZMIN, Math.round(z * 100) / 100));

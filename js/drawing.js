@@ -17,6 +17,7 @@ export class NoteEditor {
     this.tool = 'pen';
     this.color = '#1d1d1f';
     this.size = 4;
+    this.smooth = false;             // pürüzsüz (spline + sabit kalınlık) kalem
     this.allowFinger = false;
     this.current = null;
     this.activePage = null;
@@ -35,6 +36,7 @@ export class NoteEditor {
   setTool(t) { this.tool = t; }
   setColor(c) { this.color = c; if (this.tool === 'eraser') this.tool = 'pen'; }
   setSize(s) { this.size = s; }
+  setSmooth(v) { this.smooth = !!v; }
   setAllowFinger(v) { this.allowFinger = v; }
 
   // note: {page_style, page_count, drawing}; pdfDoc: pdf.js belgesi (page_style==='pdf' ise)
@@ -140,7 +142,8 @@ export class NoteEditor {
     page.draw.setPointerCapture(e.pointerId);
     this.redoStack = [];
     const p = this._toUnits(e, page);
-    this.current = { page: idx, tool: this.tool, color: this.color, size: this.size, points: [{ ...p, p: this._pressure(e) }] };
+    this.current = { page: idx, tool: this.tool, color: this.color, size: this.size,
+      smooth: this.tool === 'pen' ? this.smooth : false, points: [{ ...p, p: this._pressure(e) }] };
     this.activePage = page;
     this.strokes.push(this.current);
     page.dirty = true;
@@ -270,6 +273,29 @@ export class NoteEditor {
       ctx.restore();
       return;
     }
+
+    // Pürüzsüz kalem: noktalardan geçen tek bir Catmull-Rom spline'ı sabit
+    // kalınlıkta çiz. Basınç kaynaklı kalınlık titremesi olmaz → akıcı yazım.
+    if (s.smooth) {
+      ctx.lineWidth = Math.max(0.5, s.size);
+      ctx.beginPath();
+      ctx.moveTo(pts[0].x, pts[0].y);
+      for (let i = 0; i < pts.length - 1; i++) {
+        const p0 = pts[i - 1] || pts[i];
+        const p1 = pts[i];
+        const p2 = pts[i + 1];
+        const p3 = pts[i + 2] || p2;
+        ctx.bezierCurveTo(
+          p1.x + (p2.x - p0.x) / 6, p1.y + (p2.y - p0.y) / 6,
+          p2.x - (p3.x - p1.x) / 6, p2.y - (p3.y - p1.y) / 6,
+          p2.x, p2.y,
+        );
+      }
+      ctx.stroke();
+      ctx.restore();
+      return;
+    }
+
     for (let i = 1; i < pts.length; i++) {
       const a = pts[i - 1], b = pts[i];
       const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
