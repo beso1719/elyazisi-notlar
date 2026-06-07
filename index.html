@@ -58,7 +58,10 @@
 
         <div id="note-view" class="note-view hidden">
           <div class="note-head">
-            <input id="note-title" class="note-title" placeholder="Başlık" />
+            <div class="note-head-row">
+              <input id="note-title" class="note-title" placeholder="Başlık" />
+              <button id="fullscreen-btn" class="icon-btn" title="Tam ekran" aria-label="Tam ekran">⛶</button>
+            </div>
             <textarea id="note-content" class="note-content" placeholder="Kısa metin / açıklama…" rows="1"></textarea>
           </div>
 
@@ -126,6 +129,6 @@
 
   <div id="busy" class="busy hidden"><div class="spinner"></div><span id="busy-text">Yükleniyor…</span></div>
 
-  <script type="module" src="js/app.js?v=7"></script>
+  <script type="module" src="js/app.js?v=8"></script>
 </body>
 </html>

@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=7';
-import * as auth from './auth.js?v=7';
-import * as notesApi from './notes.js?v=7';
-import { NoteEditor } from './drawing.js?v=7';
+import { isConfigured } from './supabaseClient.js?v=8';
+import * as auth from './auth.js?v=8';
+import * as notesApi from './notes.js?v=8';
+import { NoteEditor } from './drawing.js?v=8';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=7')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=8')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -20,7 +20,7 @@ const els = {
   emptyState: $('empty-state'), noteView: $('note-view'),
   title: $('note-title'), content: $('note-content'), saveStatus: $('save-status'),
   deleteNote: $('delete-note'), logout: $('logout-btn'), themeToggle: $('theme-toggle'),
-  menuToggle: $('menu-toggle'), sidebar: $('sidebar'),
+  menuToggle: $('menu-toggle'), sidebar: $('sidebar'), fullscreenBtn: $('fullscreen-btn'),
   pages: $('pages'), palette: $('palette'), grip: $('palette-grip'),
   colors: $('colors'), sizes: $('sizes'),
   undoBtn: $('undo-btn'), redoBtn: $('redo-btn'), clearBtn: $('clear-btn'),
@@ -213,7 +213,12 @@ function ensureEditor() {
   makeDraggable();
 }
 
-const PALETTE = ['#1d1d1f', '#e0463a', '#2f9e44', '#3b6df5', '#f08c00', '#ae3ec9', '#ffd43b'];
+const PALETTE = [
+  '#1d1d1f', '#5f6368', '#9aa0a6', '#ffffff',
+  '#e0463a', '#ff8c00', '#ffd43b', '#f783ac',
+  '#2f9e44', '#12b886', '#3b6df5', '#1864ab',
+  '#ae3ec9', '#e64980', '#7a4f2a', '#000080',
+];
 function buildColors() {
   els.colors.innerHTML = '';
   PALETTE.forEach((c, i) => {
@@ -236,14 +241,15 @@ function buildColors() {
   els.colors.appendChild(picker);
 }
 
-const SIZES = [2, 4, 8, 14];
+const SIZES = [1, 2, 4, 6, 10, 16, 24];
+const DEFAULT_SIZE_IDX = 2; // 4px
 function buildSizes() {
   els.sizes.innerHTML = '';
   SIZES.forEach((s, i) => {
     const b = document.createElement('button');
-    b.className = 'size-dot' + (i === 1 ? ' active' : '');
+    b.className = 'size-dot' + (i === DEFAULT_SIZE_IDX ? ' active' : '');
     const dot = document.createElement('i');
-    const px = Math.min(20, 4 + s);
+    const px = Math.min(22, 3 + s);
     dot.style.width = px + 'px'; dot.style.height = px + 'px';
     b.appendChild(dot);
     b.addEventListener('click', () => {
@@ -253,7 +259,7 @@ function buildSizes() {
     });
     els.sizes.appendChild(b);
   });
-  editor.setSize(SIZES[1]);
+  editor.setSize(SIZES[DEFAULT_SIZE_IDX]);
 }
 
 function setActiveTool(tool) {
@@ -335,3 +341,24 @@ els.deleteNote.addEventListener('click', async () => {
 // ---------- Mobil sidebar ----------
 els.menuToggle.addEventListener('click', () => els.sidebar.classList.toggle('open'));
 function closeSidebar() { els.sidebar.classList.remove('open'); }
+
+// ---------- Tam ekran (odak modu) ----------
+// Native Fullscreen API + her durumda çalışan "focus-mode" sınıfı (iPad Safari kısıtlı olabilir).
+function isFsActive() { return document.body.classList.contains('focus-mode'); }
+function setFs(on) {
+  document.body.classList.toggle('focus-mode', on);
+  els.fullscreenBtn.textContent = on ? '✕' : '⛶';
+  els.fullscreenBtn.title = on ? 'Tam ekrandan çık' : 'Tam ekran';
+  const el = document.documentElement;
+  try {
+    if (on && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+    else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
+  } catch {}
+  setTimeout(() => editor && editor._relayout(), 60);
+}
+els.fullscreenBtn.addEventListener('click', () => setFs(!isFsActive()));
+document.addEventListener('fullscreenchange', () => {
+  // Kullanıcı ESC ile çıkarsa focus-mode'u da kapat
+  if (!document.fullscreenElement && isFsActive()) setFs(false);
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFsActive()) setFs(false); });

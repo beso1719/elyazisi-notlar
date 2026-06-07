@@ -104,10 +104,19 @@ button, input, textarea { font-family: inherit; font-size: 1rem; color: var(--in
 .empty-state { flex: 1; display: flex; align-items: center; justify-content: center; color: var(--muted); }
 .note-view { flex: 1; display: flex; flex-direction: column; min-height: 0; position: relative; }
 .note-head { padding: 12px 16px 8px; display: flex; flex-direction: column; gap: 6px; border-bottom: 1px solid var(--border); background: var(--panel); }
-.note-title { border: none; background: none; font-size: 1.3rem; font-weight: 700; padding: 2px 0; }
+.note-head-row { display: flex; align-items: center; gap: 8px; }
+.note-title { flex: 1; min-width: 0; border: none; background: none; font-size: 1.3rem; font-weight: 700; padding: 2px 0; }
 .note-title:focus { outline: none; }
 .note-content { border: none; background: none; resize: none; color: var(--muted); padding: 0; line-height: 1.4; max-height: 80px; }
 .note-content:focus { outline: none; }
+
+/* Çizim/sayfa alanında istem dışı metin seçimini engelle (yazarken tüm sayfayı seçme sorunu). */
+.pages-scroll, .palette, .note-footer, .page, .page-num {
+  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+}
+/* Başlık ve metin alanı seçilebilir kalsın. */
+.note-title, .note-content { -webkit-user-select: text; user-select: text; }
+.page-draw { cursor: crosshair; }
 
 /* Sayfa alanı */
 .pages-scroll { flex: 1; overflow-y: auto; padding: 24px 16px 120px; display: flex; flex-direction: column; align-items: center; gap: 24px; background: var(--bg); }
@@ -143,6 +152,16 @@ button, input, textarea { font-family: inherit; font-size: 1rem; color: var(--in
 
 .note-footer { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-top: 1px solid var(--border); background: var(--panel); flex-wrap: wrap; }
 .addpage { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* Tam ekran / odak modu: topbar + sidebar gizlenir, not tüm ekranı kaplar */
+body.focus-mode .topbar,
+body.focus-mode .sidebar { display: none; }
+body.focus-mode .pages-scroll { padding-top: 16px; }
+#fullscreen-btn { flex: none; font-size: 1.05rem; }
+
+/* Renk paleti çok renkli olduğu için scroll'lanabilir grid */
+#colors { max-width: 320px; max-height: 84px; overflow-y: auto; }
+.color-swatch[value], .color-swatch[type="color"] { padding: 0; }
 
 /* Busy */
 .busy { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,.4); color: #fff; z-index: 80; }
