@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=9';
-import * as auth from './auth.js?v=9';
-import * as notesApi from './notes.js?v=9';
-import { NoteEditor } from './drawing.js?v=9';
+import { isConfigured } from './supabaseClient.js?v=10';
+import * as auth from './auth.js?v=10';
+import * as notesApi from './notes.js?v=10';
+import { NoteEditor } from './drawing.js?v=10';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=9')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=10')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,7 +22,7 @@ const els = {
   deleteNote: $('delete-note'), logout: $('logout-btn'), themeToggle: $('theme-toggle'),
   menuToggle: $('menu-toggle'), sidebar: $('sidebar'), fullscreenBtn: $('fullscreen-btn'),
   pagesScroll: $('pages-scroll'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'), zoomLevel: $('zoom-level'),
-  pages: $('pages'), palette: $('palette'), grip: $('palette-grip'),
+  pages: $('pages'), palette: $('palette'), grip: $('palette-grip'), paletteToggle: $('palette-toggle'),
   colors: $('colors'), sizes: $('sizes'),
   undoBtn: $('undo-btn'), redoBtn: $('redo-btn'), clearBtn: $('clear-btn'),
   fingerDraw: $('finger-draw'), addpageGroup: $('addpage-group'),
@@ -266,7 +266,22 @@ function buildSizes() {
 
 function setActiveTool(tool) {
   els.palette.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === tool));
+  // Kapalı palet düğmesinde seçili aracın simgesi görünsün
+  const btn = els.palette.querySelector(`[data-tool="${tool}"]`);
+  if (btn && els.palette.classList.contains('collapsed')) els.paletteToggle.textContent = btn.textContent;
 }
+
+// Paleti aç/kapa (Apple Pencil paleti gibi)
+function setPaletteOpen(open) {
+  els.palette.classList.toggle('collapsed', !open);
+  if (open) {
+    els.paletteToggle.textContent = '▾';
+  } else {
+    const act = els.palette.querySelector('[data-tool].active') || els.palette.querySelector('[data-tool="pen"]');
+    els.paletteToggle.textContent = act ? act.textContent : '✒️';
+  }
+}
+els.paletteToggle.addEventListener('click', () => setPaletteOpen(els.palette.classList.contains('collapsed')));
 
 // Paleti sürükle
 function makeDraggable() {

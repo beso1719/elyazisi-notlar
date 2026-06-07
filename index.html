@@ -5,6 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>El Yazısı Notlar</title>
   <link rel="icon" href="data:," />
+  <!-- Ana ekrana eklenince Safari çubuğu olmadan tam uygulama gibi açılsın -->
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Notlar" />
+  <meta name="theme-color" content="#1e1e24" />
+  <link rel="manifest" href="manifest.json" />
   <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
@@ -77,23 +84,26 @@
             <button id="zoom-in" class="ztool" title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
           </div>
 
-          <!-- Yüzen Apple-Pencil tarzı araç paleti -->
-          <div id="palette" class="palette">
-            <div class="palette-grip" id="palette-grip">⋮⋮</div>
-            <div class="palette-tools">
-              <button class="tool" data-tool="pen" id="tool-pen" title="Kalem">✒️</button>
-              <button class="tool" data-tool="hi" id="tool-hi" title="Fosforlu">🖍️</button>
-              <button class="tool" data-tool="eraser" id="tool-eraser" title="Silgi">⌫</button>
-              <span class="palette-sep"></span>
-              <button class="tool" id="undo-btn" title="Geri al">↶</button>
-              <button class="tool" id="redo-btn" title="İleri al">↷</button>
-              <button class="tool" id="clear-btn" title="Tümünü temizle">🗑️</button>
+          <!-- Yüzen Apple-Pencil tarzı araç paleti (varsayılan kapalı, basınca açılır) -->
+          <div id="palette" class="palette collapsed">
+            <button id="palette-toggle" class="palette-toggle" title="Araçlar" aria-label="Araçlar">✒️</button>
+            <div class="palette-body">
+              <div class="palette-grip" id="palette-grip">⋮⋮</div>
+              <div class="palette-tools">
+                <button class="tool" data-tool="pen" id="tool-pen" title="Kalem">✒️</button>
+                <button class="tool" data-tool="hi" id="tool-hi" title="Fosforlu">🖍️</button>
+                <button class="tool" data-tool="eraser" id="tool-eraser" title="Silgi">⌫</button>
+                <span class="palette-sep"></span>
+                <button class="tool" id="undo-btn" title="Geri al">↶</button>
+                <button class="tool" id="redo-btn" title="İleri al">↷</button>
+                <button class="tool" id="clear-btn" title="Tümünü temizle">🗑️</button>
+              </div>
+              <div class="palette-row" id="colors"></div>
+              <div class="palette-row sizes" id="sizes"></div>
+              <label class="palette-finger">
+                <input id="finger-draw" type="checkbox" /> Parmakla çiz
+              </label>
             </div>
-            <div class="palette-row" id="colors"></div>
-            <div class="palette-row sizes" id="sizes"></div>
-            <label class="palette-finger">
-              <input id="finger-draw" type="checkbox" /> Parmakla çiz
-            </label>
           </div>
 
           <!-- Sayfa ekleme / silme çubuğu -->
@@ -138,6 +148,6 @@
 
   <div id="busy" class="busy hidden"><div class="spinner"></div><span id="busy-text">Yükleniyor…</span></div>
 
-  <script type="module" src="js/app.js?v=9"></script>
+  <script type="module" src="js/app.js?v=10"></script>
 </body>
 </html>

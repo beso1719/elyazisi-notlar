@@ -7,7 +7,10 @@ const A4 = 1.4142;                   // boş sayfa en-boy oranı (yükseklik/gen
 
 export class NoteEditor {
   constructor(host) {
-    this.host = host;                // kaydırılabilir kapsayıcı
+    this.host = host;                // yakınlaştırılan iç katman (#pages)
+    this.scroller = host.parentElement || host; // gerçek kaydırıcı (#pages-scroll)
+    this._pan = null;                // parmakla kaydırma durumu
+    this._activeTouches = 0;
     this.strokes = [];
     this.redoStack = [];
     this.pages = [];                 // { wrapper, draw, ctx, bg, hUnits, cssW, dpr, pdfPage, dirty }
@@ -32,13 +35,7 @@ export class NoteEditor {
   setTool(t) { this.tool = t; }
   setColor(c) { this.color = c; if (this.tool === 'eraser') this.tool = 'pen'; }
   setSize(s) { this.size = s; }
-  setAllowFinger(v) {
-    this.allowFinger = v;
-    // Parmakla çizim KAPALI: tek parmak sayfayı kaydırsın (touch-action: pan).
-    // AÇIK: parmak çizsin, kaydırma olmasın (touch-action: none).
-    const ta = v ? 'none' : 'pan-x pan-y';
-    for (const p of this.pages) p.draw.style.touchAction = ta;
-  }
+  setAllowFinger(v) { this.allowFinger = v; }
 
   // note: {page_style, page_count, drawing}; pdfDoc: pdf.js belgesi (page_style==='pdf' ise)
   async loadNote(note, pdfDoc = null) {
@@ -46,6 +43,8 @@ export class NoteEditor {
     this.pages = [];
     this.pdfDoc = pdfDoc;
     this.current = null;
+    this._pan = null;
+    this._activeTouches = 0;
     this.strokes = (Array.isArray(note.drawing) ? note.drawing : []).filter(
       (s) => s && Array.isArray(s.points)
     );
@@ -86,7 +85,6 @@ export class NoteEditor {
     }
     const draw = document.createElement('canvas');
     draw.className = 'page-draw';
-    draw.style.touchAction = this.allowFinger ? 'none' : 'pan-x pan-y';
     wrapper.appendChild(draw);
 
     const num = document.createElement('span');
@@ -123,6 +121,20 @@ export class NoteEditor {
   _pressure(e) { return e.pointerType === 'pen' && e.pressure > 0 ? e.pressure : 0.5; }
 
   _down(e, page, idx) {
+    // Parmak + "parmakla çiz" kapalı: tek parmakla sayfayı kaydır (çizme).
+    // touch-action: none olduğundan kaydırmayı elle yapıyoruz; böylece kalem
+    // her zaman güvenle çizer, ekran kayması yapmaz.
+    if (e.pointerType === 'touch' && !this.allowFinger) {
+      this._activeTouches++;
+      if (this._activeTouches === 1) {
+        try { page.draw.setPointerCapture(e.pointerId); } catch {}
+        this._pan = { id: e.pointerId, x: e.clientX, y: e.clientY,
+          left: this.scroller.scrollLeft, top: this.scroller.scrollTop };
+      } else {
+        this._pan = null; // ikinci parmak: pinch yakınlaştırmaya bırak
+      }
+      return;
+    }
     if (!this._isDraw(e)) return;
     e.preventDefault();
     page.draw.setPointerCapture(e.pointerId);
@@ -136,6 +148,11 @@ export class NoteEditor {
   }
 
   _move(e, page) {
+    if (this._pan && e.pointerId === this._pan.id) {
+      this.scroller.scrollLeft = this._pan.left - (e.clientX - this._pan.x);
+      this.scroller.scrollTop = this._pan.top - (e.clientY - this._pan.y);
+      return;
+    }
     if (!this.current || page !== this.activePage) return;
     e.preventDefault();
     const evs = e.getCoalescedEvents ? e.getCoalescedEvents() : [e];
@@ -152,6 +169,11 @@ export class NoteEditor {
   }
 
   _up(e, page) {
+    if (e.pointerType === 'touch' && this._activeTouches > 0) this._activeTouches--;
+    if (this._pan && e.pointerId === this._pan.id) {
+      try { page.draw.releasePointerCapture(e.pointerId); } catch {}
+      this._pan = null;
+    }
     if (!this.current) return;
     e.preventDefault?.();
     try { page.draw.releasePointerCapture(e.pointerId); } catch {}
