@@ -64,17 +64,54 @@
         </div>
 
         <div id="note-view" class="note-view hidden">
-          <div class="note-head">
-            <div class="note-head-row">
-              <input id="note-title" class="note-title" placeholder="Başlık" />
-              <button id="fullscreen-btn" class="icon-btn" title="Tam ekran" aria-label="Tam ekran">⛶</button>
+          <!-- ÜST ARAÇ ÇUBUĞU -->
+          <div class="note-toolbar">
+            <input id="note-title" class="note-title" placeholder="Başlık" />
+            <div class="tb-actions">
+              <button id="undo-btn" class="tb-btn" title="Geri al">↶</button>
+              <button id="redo-btn" class="tb-btn" title="İleri al">↷</button>
+              <span class="tb-sep"></span>
+              <div class="addpage" id="addpage-group">
+                <button class="tb-btn" data-add="blank" title="Boş sayfa ekle">▢</button>
+                <button class="tb-btn" data-add="lined" title="Çizgili sayfa ekle">≣</button>
+                <button class="tb-btn" data-add="grid" title="Kareli sayfa ekle">▦</button>
+                <button class="tb-btn" data-add="dotted" title="Noktalı sayfa ekle">⋮⋮</button>
+              </div>
+              <span class="tb-sep"></span>
+              <button id="fullscreen-btn" class="tb-btn" title="Tam ekran" aria-label="Tam ekran">⛶</button>
+              <button id="delete-note" class="tb-btn tb-danger" title="Notu sil">🗑️</button>
             </div>
-            <textarea id="note-content" class="note-content" placeholder="Kısa metin / açıklama…" rows="1"></textarea>
+          </div>
+          <textarea id="note-content" class="note-content" placeholder="Kısa açıklama…" rows="1"></textarea>
+
+          <!-- GÖVDE: sol kalem çubuğu + sayfalar -->
+          <div class="note-body">
+            <aside id="tools" class="tools-left">
+              <div class="tools-modes" id="tool-modes">
+                <button class="tmode" data-tool="pen" title="Kalem">✒️</button>
+                <button class="tmode" data-tool="hi" title="Fosforlu">🖍️</button>
+                <button class="tmode" data-tool="eraser" title="Silgi">⌫</button>
+              </div>
+              <div class="tools-sep"></div>
+              <div class="pens" id="pens"></div>
+              <button class="pen-add" id="pen-add" title="Kalem ekle">＋</button>
+              <div class="tools-sep"></div>
+              <button class="tmode" id="finger-toggle" title="Parmakla çiz">✋</button>
+              <button class="tmode" id="clear-btn" title="Tümünü temizle">🧹</button>
+            </aside>
+
+            <!-- Sayfalar (kaydırılabilir + yakınlaştırılabilir) -->
+            <div id="pages-scroll" class="pages-scroll">
+              <div id="pages" class="pages-zoom"></div>
+            </div>
           </div>
 
-          <!-- Sayfalar (kaydırılabilir + yakınlaştırılabilir) -->
-          <div id="pages-scroll" class="pages-scroll">
-            <div id="pages" class="pages-zoom"></div>
+          <!-- Kalem düzenleme açılır kutusu -->
+          <div id="pen-editor" class="pen-editor hidden">
+            <input type="color" id="pen-color" title="Renk" />
+            <input type="range" id="pen-size" min="1" max="28" step="1" />
+            <span id="pen-size-val" class="pen-size-val">4</span>
+            <button id="pen-delete" class="btn-link" title="Kalemi sil">Sil</button>
           </div>
 
           <!-- Yakınlaştırma kontrolü -->
@@ -82,40 +119,6 @@
             <button id="zoom-out" class="ztool" title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
             <button id="zoom-level" class="zlevel" title="100%'e dön">100%</button>
             <button id="zoom-in" class="ztool" title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
-          </div>
-
-          <!-- Yüzen Apple-Pencil tarzı araç paleti (varsayılan kapalı, basınca açılır) -->
-          <div id="palette" class="palette collapsed">
-            <button id="palette-toggle" class="palette-toggle" title="Araçlar" aria-label="Araçlar">✒️</button>
-            <div class="palette-body">
-              <div class="palette-grip" id="palette-grip">⋮⋮</div>
-              <div class="palette-tools">
-                <button class="tool" data-tool="pen" id="tool-pen" title="Kalem">✒️</button>
-                <button class="tool" data-tool="hi" id="tool-hi" title="Fosforlu">🖍️</button>
-                <button class="tool" data-tool="eraser" id="tool-eraser" title="Silgi">⌫</button>
-                <span class="palette-sep"></span>
-                <button class="tool" id="undo-btn" title="Geri al">↶</button>
-                <button class="tool" id="redo-btn" title="İleri al">↷</button>
-                <button class="tool" id="clear-btn" title="Tümünü temizle">🗑️</button>
-              </div>
-              <div class="palette-row" id="colors"></div>
-              <div class="palette-row sizes" id="sizes"></div>
-              <label class="palette-finger">
-                <input id="finger-draw" type="checkbox" /> Parmakla çiz
-              </label>
-            </div>
-          </div>
-
-          <!-- Sayfa ekleme / silme çubuğu -->
-          <div class="note-footer">
-            <div class="addpage" id="addpage-group">
-              <button class="btn btn-sm" data-add="blank">+ Boş sayfa</button>
-              <button class="btn btn-sm" data-add="lined">+ Çizgili</button>
-              <button class="btn btn-sm" data-add="grid">+ Kareli</button>
-              <button class="btn btn-sm" data-add="dotted">+ Noktalı</button>
-            </div>
-            <div class="spacer"></div>
-            <button id="delete-note" class="btn btn-sm btn-danger">Notu sil</button>
           </div>
         </div>
       </main>
@@ -148,6 +151,6 @@
 
   <div id="busy" class="busy hidden"><div class="spinner"></div><span id="busy-text">Yükleniyor…</span></div>
 
-  <script type="module" src="js/app.js?v=11"></script>
+  <script type="module" src="js/app.js?v=12"></script>
 </body>
 </html>

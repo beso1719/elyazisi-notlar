@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=11';
-import * as auth from './auth.js?v=11';
-import * as notesApi from './notes.js?v=11';
-import { NoteEditor } from './drawing.js?v=11';
+import { isConfigured } from './supabaseClient.js?v=12';
+import * as auth from './auth.js?v=12';
+import * as notesApi from './notes.js?v=12';
+import { NoteEditor } from './drawing.js?v=12';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=11')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=12')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -22,10 +22,10 @@ const els = {
   deleteNote: $('delete-note'), logout: $('logout-btn'), themeToggle: $('theme-toggle'),
   menuToggle: $('menu-toggle'), sidebar: $('sidebar'), fullscreenBtn: $('fullscreen-btn'),
   pagesScroll: $('pages-scroll'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'), zoomLevel: $('zoom-level'),
-  pages: $('pages'), palette: $('palette'), grip: $('palette-grip'), paletteToggle: $('palette-toggle'),
-  colors: $('colors'), sizes: $('sizes'),
+  pages: $('pages'), tools: $('tools'), toolModes: $('tool-modes'), pens: $('pens'), penAdd: $('pen-add'),
+  penEditor: $('pen-editor'), penColor: $('pen-color'), penSize: $('pen-size'), penSizeVal: $('pen-size-val'), penDelete: $('pen-delete'),
   undoBtn: $('undo-btn'), redoBtn: $('redo-btn'), clearBtn: $('clear-btn'),
-  fingerDraw: $('finger-draw'), addpageGroup: $('addpage-group'),
+  fingerToggle: $('finger-toggle'), addpageGroup: $('addpage-group'),
   modal: $('newnote-modal'), modalCancel: $('newnote-cancel'), pdfInput: $('pdf-input'),
   busy: $('busy'), busyText: $('busy-text'),
 };
@@ -196,123 +196,114 @@ async function openNoteWithDoc(note, doc) {
   closeSidebar();
 }
 
-// ---------- Editör + palet ----------
+// ---------- Editör + sol kalem çubuğu ----------
 function ensureEditor() {
   if (editor) return;
   editor = new NoteEditor(els.pages);
   editor.onChange = scheduleSave;
-  buildColors();
-  buildSizes();
-  setActiveTool('pen');
-  els.palette.querySelectorAll('[data-tool]').forEach((b) =>
-    b.addEventListener('click', () => { editor.setTool(b.dataset.tool); setActiveTool(b.dataset.tool); }));
+  buildPens();
+  els.toolModes.querySelectorAll('[data-tool]').forEach((b) =>
+    b.addEventListener('click', () => selectTool(b.dataset.tool)));
   els.undoBtn.addEventListener('click', () => editor.undo());
   els.redoBtn.addEventListener('click', () => editor.redo());
   els.clearBtn.addEventListener('click', () => { if (confirm('Tüm çizimi sil?')) editor.clear(); });
-  els.fingerDraw.addEventListener('change', () => editor.setAllowFinger(els.fingerDraw.checked));
+  els.fingerToggle.addEventListener('click', () => {
+    const on = !els.fingerToggle.classList.contains('active');
+    els.fingerToggle.classList.toggle('active', on);
+    editor.setAllowFinger(on);
+  });
   els.addpageGroup.querySelectorAll('[data-add]').forEach((b) =>
     b.addEventListener('click', () => editor.addBlankPage(b.dataset.add)));
-  makeDraggable();
+  selectTool('pen');
 }
 
-const PALETTE = [
-  '#1d1d1f', '#5f6368', '#9aa0a6', '#ffffff',
-  '#e0463a', '#ff8c00', '#ffd43b', '#f783ac',
-  '#2f9e44', '#12b886', '#3b6df5', '#1864ab',
-  '#ae3ec9', '#e64980', '#7a4f2a', '#000080',
+// ---------- Kalemler (çoklu hazır kalem, localStorage'da saklanır) ----------
+const PEN_KEY = 'eyn-pens';
+const DEFAULT_PENS = [
+  { color: '#1d1d1f', size: 3 }, { color: '#e0463a', size: 3 },
+  { color: '#3b6df5', size: 3 }, { color: '#2f9e44', size: 4 },
+  { color: '#f08c00', size: 6 }, { color: '#ae3ec9', size: 3 },
+  { color: '#000000', size: 10 },
 ];
-function buildColors() {
-  els.colors.innerHTML = '';
-  PALETTE.forEach((c, i) => {
+const HI = { color: '#ffe066', size: 12 }; // fosforlu
+let pens = loadPens();
+let curPen = 0;
+let curTool = 'pen';
+
+function loadPens() {
+  try { const v = JSON.parse(localStorage.getItem(PEN_KEY)); if (Array.isArray(v) && v.length) return v; } catch {}
+  return DEFAULT_PENS.map((p) => ({ ...p }));
+}
+function savePens() { localStorage.setItem(PEN_KEY, JSON.stringify(pens)); }
+
+function buildPens() {
+  els.pens.innerHTML = '';
+  pens.forEach((p, i) => {
     const b = document.createElement('button');
-    b.className = 'color-swatch' + (i === 0 ? ' active' : '');
-    b.style.background = c;
-    b.addEventListener('click', () => {
-      editor.setColor(c); setActiveTool('pen');
-      els.colors.querySelectorAll('.color-swatch').forEach((s) => s.classList.remove('active'));
-      b.classList.add('active');
-    });
-    els.colors.appendChild(b);
+    b.className = 'pen' + (curTool === 'pen' && i === curPen ? ' active' : '');
+    b.style.setProperty('--c', p.color);
+    b.innerHTML = '<i class="body"></i><i class="tip"></i>';
+    b.addEventListener('click', () => selectPen(i, b));
+    els.pens.appendChild(b);
   });
-  const picker = document.createElement('input');
-  picker.type = 'color'; picker.className = 'color-swatch'; picker.value = '#000000'; picker.title = 'Serbest renk';
-  picker.addEventListener('input', () => {
-    editor.setColor(picker.value); setActiveTool('pen');
-    els.colors.querySelectorAll('.color-swatch').forEach((s) => s.classList.remove('active'));
-  });
-  els.colors.appendChild(picker);
+}
+function markTool() {
+  els.toolModes.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === curTool));
+}
+function applyPen() {
+  const p = pens[curPen]; if (!p) return;
+  editor.setTool('pen'); editor.setColor(p.color); editor.setSize(p.size);
+}
+function selectTool(t) {
+  curTool = t;
+  if (t === 'pen') applyPen();
+  else if (t === 'hi') { editor.setTool('hi'); editor.setColor(HI.color); editor.setSize(HI.size); }
+  else if (t === 'eraser') editor.setTool('eraser');
+  markTool(); buildPens(); closePenEditor();
+}
+function selectPen(i, btn) {
+  if (curTool === 'pen' && curPen === i) { openPenEditor(i, btn); return; } // aktif kaleme tekrar bas → düzenle
+  curPen = i; curTool = 'pen';
+  applyPen(); markTool(); buildPens(); closePenEditor();
 }
 
-const SIZES = [1, 2, 4, 6, 10, 16, 24];
-const DEFAULT_SIZE_IDX = 2; // 4px
-function buildSizes() {
-  els.sizes.innerHTML = '';
-  SIZES.forEach((s, i) => {
-    const b = document.createElement('button');
-    b.className = 'size-dot' + (i === DEFAULT_SIZE_IDX ? ' active' : '');
-    const dot = document.createElement('i');
-    const px = Math.min(22, 3 + s);
-    dot.style.width = px + 'px'; dot.style.height = px + 'px';
-    b.appendChild(dot);
-    b.addEventListener('click', () => {
-      editor.setSize(s);
-      els.sizes.querySelectorAll('.size-dot').forEach((d) => d.classList.remove('active'));
-      b.classList.add('active');
-    });
-    els.sizes.appendChild(b);
-  });
-  editor.setSize(SIZES[DEFAULT_SIZE_IDX]);
+// Kalem düzenleme açılır kutusu
+function openPenEditor(i, btn) {
+  curPen = i;
+  const p = pens[i];
+  els.penColor.value = p.color;
+  els.penSize.value = p.size; els.penSizeVal.textContent = p.size;
+  els.penEditor.classList.remove('hidden');
+  const nv = els.noteView.getBoundingClientRect();
+  const tr = els.tools.getBoundingClientRect();
+  const r = (btn || els.tools).getBoundingClientRect();
+  els.penEditor.style.left = (tr.right - nv.left + 8) + 'px';
+  els.penEditor.style.top = Math.max(8, r.top - nv.top) + 'px';
 }
-
-function setActiveTool(tool) {
-  els.palette.querySelectorAll('[data-tool]').forEach((b) => b.classList.toggle('active', b.dataset.tool === tool));
-  // Kapalı palet düğmesinde seçili aracın simgesi görünsün
-  const btn = els.palette.querySelector(`[data-tool="${tool}"]`);
-  if (btn && els.palette.classList.contains('collapsed')) els.paletteToggle.textContent = btn.textContent;
-}
-
-// Paleti aç/kapa (Apple Pencil paleti gibi)
-function setPaletteOpen(open) {
-  els.palette.classList.toggle('collapsed', !open);
-  if (open) {
-    els.paletteToggle.textContent = '▾';
-  } else {
-    const act = els.palette.querySelector('[data-tool].active') || els.palette.querySelector('[data-tool="pen"]');
-    els.paletteToggle.textContent = act ? act.textContent : '✒️';
-  }
-}
-// Sürükleme bir tıklamaya dönüşmesin diye (küçük paleti taşırken açılmasını engelle)
-let palMoved = false;
-els.paletteToggle.addEventListener('click', () => {
-  if (palMoved) { palMoved = false; return; }
-  setPaletteOpen(els.palette.classList.contains('collapsed'));
+function closePenEditor() { els.penEditor.classList.add('hidden'); }
+els.penColor.addEventListener('input', () => { pens[curPen].color = els.penColor.value; savePens(); buildPens(); applyPen(); });
+els.penSize.addEventListener('input', () => {
+  pens[curPen].size = +els.penSize.value; els.penSizeVal.textContent = els.penSize.value;
+  savePens(); buildPens(); applyPen();
 });
-
-// Paleti sürükle — hem açık (grip) hem kapalı (yuvarlak düğme) durumda
-function makeDraggable() {
-  const attach = (handle) => {
-    let drag = null;
-    handle.addEventListener('pointerdown', (e) => {
-      const r = els.palette.getBoundingClientRect();
-      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top, sx: e.clientX, sy: e.clientY };
-      palMoved = false;
-      els.palette.style.transform = 'none';
-      try { handle.setPointerCapture(e.pointerId); } catch {}
-    });
-    handle.addEventListener('pointermove', (e) => {
-      if (!drag) return;
-      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) > 6) palMoved = true;
-      const er = els.editor?.getBoundingClientRect?.() || { left: 0, top: 0 };
-      els.palette.style.left = (e.clientX - drag.dx - er.left) + 'px';
-      els.palette.style.top = (e.clientY - drag.dy - er.top) + 'px';
-      els.palette.style.bottom = 'auto';
-    });
-    handle.addEventListener('pointerup', () => { drag = null; });
-  };
-  attach(els.grip);
-  attach(els.paletteToggle);
-}
-els.editor = $('editor');
+els.penDelete.addEventListener('click', () => {
+  if (pens.length <= 1) return;
+  pens.splice(curPen, 1); curPen = Math.max(0, curPen - 1);
+  savePens(); applyPen(); buildPens(); closePenEditor();
+});
+els.penAdd.addEventListener('click', () => {
+  pens.push({ color: '#3b6df5', size: 4 });
+  curPen = pens.length - 1; curTool = 'pen';
+  savePens(); applyPen(); markTool(); buildPens();
+  openPenEditor(curPen, els.pens.lastElementChild);
+});
+// Boş alana basınca düzenleyiciyi kapat
+document.addEventListener('pointerdown', (e) => {
+  if (!els.penEditor.classList.contains('hidden') &&
+      !els.penEditor.contains(e.target) && !els.pens.contains(e.target) && e.target !== els.penAdd) {
+    closePenEditor();
+  }
+});
 
 // ---------- Başlık / metin ----------
 els.title.addEventListener('input', scheduleSave);
