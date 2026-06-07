@@ -32,7 +32,13 @@ export class NoteEditor {
   setTool(t) { this.tool = t; }
   setColor(c) { this.color = c; if (this.tool === 'eraser') this.tool = 'pen'; }
   setSize(s) { this.size = s; }
-  setAllowFinger(v) { this.allowFinger = v; }
+  setAllowFinger(v) {
+    this.allowFinger = v;
+    // Parmakla çizim KAPALI: tek parmak sayfayı kaydırsın (touch-action: pan).
+    // AÇIK: parmak çizsin, kaydırma olmasın (touch-action: none).
+    const ta = v ? 'none' : 'pan-x pan-y';
+    for (const p of this.pages) p.draw.style.touchAction = ta;
+  }
 
   // note: {page_style, page_count, drawing}; pdfDoc: pdf.js belgesi (page_style==='pdf' ise)
   async loadNote(note, pdfDoc = null) {
@@ -80,6 +86,7 @@ export class NoteEditor {
     }
     const draw = document.createElement('canvas');
     draw.className = 'page-draw';
+    draw.style.touchAction = this.allowFinger ? 'none' : 'pan-x pan-y';
     wrapper.appendChild(draw);
 
     const num = document.createElement('span');

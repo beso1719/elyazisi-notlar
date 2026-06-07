@@ -65,8 +65,17 @@
             <textarea id="note-content" class="note-content" placeholder="Kısa metin / açıklama…" rows="1"></textarea>
           </div>
 
-          <!-- Sayfalar (kaydırılabilir) -->
-          <div id="pages" class="pages-scroll"></div>
+          <!-- Sayfalar (kaydırılabilir + yakınlaştırılabilir) -->
+          <div id="pages-scroll" class="pages-scroll">
+            <div id="pages" class="pages-zoom"></div>
+          </div>
+
+          <!-- Yakınlaştırma kontrolü -->
+          <div id="zoombar" class="zoombar">
+            <button id="zoom-out" class="ztool" title="Uzaklaştır" aria-label="Uzaklaştır">−</button>
+            <button id="zoom-level" class="zlevel" title="100%'e dön">100%</button>
+            <button id="zoom-in" class="ztool" title="Yakınlaştır" aria-label="Yakınlaştır">+</button>
+          </div>
 
           <!-- Yüzen Apple-Pencil tarzı araç paleti -->
           <div id="palette" class="palette">
@@ -129,6 +138,6 @@
 
   <div id="busy" class="busy hidden"><div class="spinner"></div><span id="busy-text">Yükleniyor…</span></div>
 
-  <script type="module" src="js/app.js?v=8"></script>
+  <script type="module" src="js/app.js?v=9"></script>
 </body>
 </html>

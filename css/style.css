@@ -110,19 +110,23 @@ button, input, textarea { font-family: inherit; font-size: 1rem; color: var(--in
 .note-content { border: none; background: none; resize: none; color: var(--muted); padding: 0; line-height: 1.4; max-height: 80px; }
 .note-content:focus { outline: none; }
 
-/* Çizim/sayfa alanında istem dışı metin seçimini engelle (yazarken tüm sayfayı seçme sorunu). */
-.pages-scroll, .palette, .note-footer, .page, .page-num {
-  -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+/* iPad'de avuç/parmak dokunuşunun metin seçmesini ve "Kopyala" balonunu (callout)
+   açmasını tüm uygulamada engelle. Sadece yazı kutuları seçilebilir kalsın. */
+.app {
+  -webkit-user-select: none; user-select: none;
+  -webkit-touch-callout: none; -webkit-tap-highlight-color: transparent;
 }
-/* Başlık ve metin alanı seçilebilir kalsın. */
-.note-title, .note-content { -webkit-user-select: text; user-select: text; }
+.note-title, .note-content, .search-input, #auth-form input {
+  -webkit-user-select: text; user-select: text; -webkit-touch-callout: default;
+}
 .page-draw { cursor: crosshair; }
 
-/* Sayfa alanı */
-.pages-scroll { flex: 1; overflow-y: auto; padding: 24px 16px 120px; display: flex; flex-direction: column; align-items: center; gap: 24px; background: var(--bg); }
+/* Sayfa alanı (kaydırıcı) + yakınlaştırılan iç katman */
+.pages-scroll { flex: 1; overflow: auto; padding: 24px 16px 120px; background: var(--bg); -webkit-overflow-scrolling: touch; }
+.pages-zoom { display: flex; flex-direction: column; align-items: center; gap: 24px; }
 .page { width: min(900px, 100%); background: #fff; box-shadow: var(--shadow); border-radius: 4px; position: relative; }
 .page-bg, .page-draw { position: absolute; inset: 0; width: 100%; height: 100%; }
-.page-draw { touch-action: none; z-index: 2; }
+.page-draw { touch-action: pan-x pan-y; z-index: 2; }
 .page-num { position: absolute; bottom: 6px; right: 10px; font-size: .7rem; color: #b3b3b3; z-index: 3; }
 .page--lined { background: repeating-linear-gradient(#fff 0 31px, var(--line) 31px 32px); }
 .page--grid  { background: repeating-linear-gradient(#fff 0 31px, var(--line) 31px 32px), repeating-linear-gradient(90deg, #fff 0 31px, var(--line) 31px 32px); }
@@ -161,7 +165,21 @@ body.focus-mode .pages-scroll { padding-top: 16px; }
 
 /* Renk paleti çok renkli olduğu için scroll'lanabilir grid */
 #colors { max-width: 320px; max-height: 84px; overflow-y: auto; }
-.color-swatch[value], .color-swatch[type="color"] { padding: 0; }
+.color-swatch[type="color"] { padding: 0; }
+
+/* Yakınlaştırma çubuğu (sağ alt) */
+.zoombar {
+  position: absolute; right: 14px; bottom: 70px; z-index: 21;
+  display: flex; align-items: center; gap: 2px;
+  background: var(--panel); border: 1px solid var(--border);
+  border-radius: 12px; box-shadow: var(--shadow-lg); padding: 4px;
+}
+.zoombar .ztool { width: 38px; height: 38px; border: none; background: none;
+  border-radius: 8px; cursor: pointer; font-size: 1.3rem; line-height: 1; color: var(--ink); }
+.zoombar .ztool:hover { background: var(--bg); }
+.zoombar .zlevel { min-width: 52px; height: 38px; border: none; background: none;
+  cursor: pointer; font-size: .85rem; color: var(--muted); border-radius: 8px; }
+.zoombar .zlevel:hover { background: var(--bg); }
 
 /* Busy */
 .busy { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,.4); color: #fff; z-index: 80; }

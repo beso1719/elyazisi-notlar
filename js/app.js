@@ -1,10 +1,10 @@
-import { isConfigured } from './supabaseClient.js?v=8';
-import * as auth from './auth.js?v=8';
-import * as notesApi from './notes.js?v=8';
-import { NoteEditor } from './drawing.js?v=8';
+import { isConfigured } from './supabaseClient.js?v=9';
+import * as auth from './auth.js?v=9';
+import * as notesApi from './notes.js?v=9';
+import { NoteEditor } from './drawing.js?v=9';
 
 // pdf.js sadece gerektiğinde yüklensin (CDN sorunu çekirdek uygulamayı kırmasın)
-const loadPdf = async (buf) => (await import('./pdf.js?v=8')).loadPdf(buf);
+const loadPdf = async (buf) => (await import('./pdf.js?v=9')).loadPdf(buf);
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,6 +21,7 @@ const els = {
   title: $('note-title'), content: $('note-content'), saveStatus: $('save-status'),
   deleteNote: $('delete-note'), logout: $('logout-btn'), themeToggle: $('theme-toggle'),
   menuToggle: $('menu-toggle'), sidebar: $('sidebar'), fullscreenBtn: $('fullscreen-btn'),
+  pagesScroll: $('pages-scroll'), zoomIn: $('zoom-in'), zoomOut: $('zoom-out'), zoomLevel: $('zoom-level'),
   pages: $('pages'), palette: $('palette'), grip: $('palette-grip'),
   colors: $('colors'), sizes: $('sizes'),
   undoBtn: $('undo-btn'), redoBtn: $('redo-btn'), clearBtn: $('clear-btn'),
@@ -188,6 +189,7 @@ async function openNoteWithDoc(note, doc) {
   els.content.value = note.content || '';
   els.addpageGroup.style.display = note.page_style === 'pdf' ? 'none' : 'flex';
   ensureEditor();
+  resetZoom();
   await editor.loadNote(note, doc);
   setSaveStatus('');
   renderList();
@@ -343,22 +345,41 @@ els.menuToggle.addEventListener('click', () => els.sidebar.classList.toggle('ope
 function closeSidebar() { els.sidebar.classList.remove('open'); }
 
 // ---------- Tam ekran (odak modu) ----------
-// Native Fullscreen API + her durumda çalışan "focus-mode" sınıfı (iPad Safari kısıtlı olabilir).
+// Saf CSS "focus-mode": topbar + sidebar gizlenir, not tüm ekranı kaplar.
+// Native Fullscreen API kullanmıyoruz; iPad'de avuç/parmak dokunuşuyla kapanıp
+// odak modunu beklenmedik şekilde sonlandırıyordu.
 function isFsActive() { return document.body.classList.contains('focus-mode'); }
 function setFs(on) {
   document.body.classList.toggle('focus-mode', on);
   els.fullscreenBtn.textContent = on ? '✕' : '⛶';
   els.fullscreenBtn.title = on ? 'Tam ekrandan çık' : 'Tam ekran';
-  const el = document.documentElement;
-  try {
-    if (on && el.requestFullscreen) el.requestFullscreen().catch(() => {});
-    else if (!on && document.fullscreenElement && document.exitFullscreen) document.exitFullscreen().catch(() => {});
-  } catch {}
-  setTimeout(() => editor && editor._relayout(), 60);
+  setTimeout(() => editor && editor._relayout(), 80);
 }
 els.fullscreenBtn.addEventListener('click', () => setFs(!isFsActive()));
-document.addEventListener('fullscreenchange', () => {
-  // Kullanıcı ESC ile çıkarsa focus-mode'u da kapat
-  if (!document.fullscreenElement && isFsActive()) setFs(false);
-});
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && isFsActive()) setFs(false); });
+
+// ---------- Yakınlaştırma (PDF + tüm sayfalar) ----------
+// CSS `zoom` kullanıyoruz: transform'un aksine yerleşimi etkiler, böylece
+// büyütünce kaydırma alanı genişler ve içerikte gezinilebilir.
+const ZMIN = 0.5, ZMAX = 3, ZSTEP = 0.25;
+let zoom = 1, zoomRelayout = null;
+function applyZoom(z, doRelayout = true) {
+  zoom = Math.min(ZMAX, Math.max(ZMIN, Math.round(z * 100) / 100));
+  els.pages.style.zoom = zoom;
+  els.zoomLevel.textContent = Math.round(zoom * 100) + '%';
+  if (doRelayout) {
+    clearTimeout(zoomRelayout);
+    zoomRelayout = setTimeout(() => editor && editor._relayout(), 150);
+  }
+}
+function resetZoom() { applyZoom(1); }
+els.zoomIn.addEventListener('click', () => applyZoom(zoom + ZSTEP));
+els.zoomOut.addEventListener('click', () => applyZoom(zoom - ZSTEP));
+els.zoomLevel.addEventListener('click', () => resetZoom());
+
+// iPad Safari pinch (jest olayları). user-scalable=no olduğundan sayfa zoom'u
+// devre dışı; biz kendi zoom'umuzu uyguluyoruz.
+let pinchStart = 1;
+els.pagesScroll.addEventListener('gesturestart', (e) => { e.preventDefault(); pinchStart = zoom; }, { passive: false });
+els.pagesScroll.addEventListener('gesturechange', (e) => { e.preventDefault(); applyZoom(pinchStart * e.scale, false); }, { passive: false });
+els.pagesScroll.addEventListener('gestureend', (e) => { e.preventDefault(); applyZoom(zoom); }, { passive: false });
